@@ -1,0 +1,3 @@
+{"prompt": "Explique em uma frase o que e SFT.", "response": "SFT e o ajuste supervisionado de um modelo com exemplos rotulados."}
+{"prompt": "Traduza para ingles: bom dia, mundo.", "response": "Good morning, world."}
+{"prompt": "Resuma: O modelo aprende a partir de exemplos.", "response": "O modelo aprende com exemplos."}
