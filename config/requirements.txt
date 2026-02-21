@@ -5,3 +5,4 @@ accelerate
 trl
 peft
 bitsandbytes
+pyyaml

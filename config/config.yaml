@@ -1,3 +1,32 @@
-model_id = "Qwen/Qwen3-30B-A3B-Instruct-2507"
-data_path = "data/train.jsonl"
-output_dir = "outputs/qwen3-30b-sft"
+model:
+  id: "Qwen/Qwen3-30B-A3B-Instruct-2507"
+data:
+  train_path: "data/train.jsonl"
+output:
+  dir: "outputs/qwen3-30b-sft"
+
+quantization:
+  load_in_4bit: true #ativa a quantização de 4 bits
+  bnb_4bit_use_double_quant: true #quantizacao do fator de escala
+  bnb_4bit_quant_type: "nf4" #fp4 (distribuicao assimetrica) ou nf4 (distribuição normal)
+  bnb_4bit_compute_dtype: "bfloat16" # float ou bfloat16
+
+lora: 
+  r: 16 #dimensao do subespaço
+  lora_alpha: 32 #escala de atualização
+  lora_dropout: 0.05 
+  bias: "none" 
+  task_type: "CAUSAL_LM" 
+  target_modules: ["q_proj", "v_proj"]
+
+training:
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  num_train_epochs: 1
+  learning_rate: 0.0002
+  fp16: false
+  bf16: true
+  logging_steps: 1
+  save_steps: 20
+  save_total_limit: 2
+  report_to: "none"
