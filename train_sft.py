@@ -40,12 +40,6 @@ model.config.use_cache = False
 #leitura do dataset
 dataset = load_dataset("json", data_files=data_path, split="train")
 
-#formatação do prompt
-def format_example(example):
-    prompt = example["prompt"].strip()
-    response = example["response"].strip()
-    return f"### Instruction:\n{prompt}\n\n### Response:\n{response}"
-
 #configs lora
 peft_config = LoraConfig(
     r=cfg["lora"]["r"],
@@ -74,9 +68,8 @@ training_args = TrainingArguments(
 #treinamento
 trainer = SFTTrainer(
     model=model,
-    tokenizer=tokenizer,
+    processing_class=tokenizer,
     train_dataset=dataset,
-    formatting_func=format_example,
     args=training_args,
     peft_config=peft_config,
 )

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 #============================== Slurm ==========================================
 #SBATCH --partition=h100n2
@@ -12,6 +11,8 @@ set -euo pipefail
 #SBATCH --job-name=sft-train
 #SBATCH --output=jobs/job.%j.out
 #SBATCH --error=jobs/job.%j.err
+
+set -euo pipefail
 
 log(){ echo "[HOST $(date +'%F %T')] $*"; }
 die(){ echo "[HOST $(date +'%F %T')] ERRO: $*" >&2; exit 1; }
@@ -50,4 +51,4 @@ srun apptainer exec --nv \
 	-B "$PROJECT_DIR":/data \
 	-B "$OUT_DIR_HOST":/data/out \
 	"$APPT_IMAGE" \
-	bash -lc "/data/scripts/in_container.sh /data/$CONFIG_FILE"
+	bash -lc "bash /data/scripts/in_container.sh /data/$CONFIG_FILE"

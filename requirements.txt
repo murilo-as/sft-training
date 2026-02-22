@@ -6,3 +6,4 @@ trl
 peft
 bitsandbytes
 pyyaml
+wandb

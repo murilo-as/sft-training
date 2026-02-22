@@ -1,20 +1,82 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_PATH="${1:-/data/config/config.yaml}"
+log(){ echo "[CONTAINER $(date +'%F %T')] $*"; }
+die(){ echo "[CONTAINER $(date +'%F %T')] ERRO: $*" >&2; exit 1; }
+
+CFG="${1:-/data/config/config.yaml}"
+[ -f "$CFG" ] || die "config nao encontrada no container: $CFG"
 
 cd /data
 
-if [ ! -f "$CONFIG_PATH" ]; then
-  echo "[CONTAINER] ERRO: config nao encontrada: $CONFIG_PATH" >&2
-  exit 1
+OUT_ROOT=/data/out
+mkdir -p "$OUT_ROOT"
+
+export HF_HOME="$OUT_ROOT/cache/hf"
+export TRITON_CACHE_DIR="$OUT_ROOT/cache/triton"
+export OFFLOAD_DIR="$OUT_ROOT/offload"
+export WANDB_DIR="$OUT_ROOT/logs/wandb"
+export PIP_CACHE_DIR="$OUT_ROOT/cache/pip"
+mkdir -p "$HF_HOME" "$TRITON_CACHE_DIR" "$OFFLOAD_DIR" "$WANDB_DIR" "$PIP_CACHE_DIR"
+
+export PYTHONPATH="/data:${PYTHONPATH:-}"
+export WANDB_MODE=offline
+unset WANDB_API_KEY
+[ -z "${WANDB_BASE_URL:-}" ] && unset WANDB_BASE_URL
+
+if [ -n "${SSL_CERT_FILE:-}" ] && [ ! -f "$SSL_CERT_FILE" ]; then
+  log "Aviso: SSL_CERT_FILE definido mas arquivo nao existe: $SSL_CERT_FILE - unsetando"
+  unset SSL_CERT_FILE
+fi
+if [ -n "${SSL_CERT_DIR:-}" ] && [ ! -d "$SSL_CERT_DIR" ]; then
+  log "Aviso: SSL_CERT_DIR definido mas diretorio nao existe: $SSL_CERT_DIR - unsetando"
+  unset SSL_CERT_DIR
+fi
+if [ -n "${REQUESTS_CA_BUNDLE:-}" ] && [ ! -f "$REQUESTS_CA_BUNDLE" ]; then
+  log "Aviso: REQUESTS_CA_BUNDLE definido mas arquivo nao existe: $REQUESTS_CA_BUNDLE - unsetando"
+  unset REQUESTS_CA_BUNDLE
 fi
 
-if [ ! -f requirements.txt ]; then
-  echo "[CONTAINER] ERRO: requirements.txt nao encontrado" >&2
-  exit 1
+# Fallback para bundle de CA do sistema, se existir
+if [ -z "${SSL_CERT_FILE:-}" ] && [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+  export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 fi
 
-pip install -r requirements.txt
+VENV="$OUT_ROOT/env/.venv"
+if [ ! -f "$VENV/bin/activate" ]; then
+  log "Criando venv: $VENV"
+  python -m venv --system-site-packages "$VENV" || true
+fi
+. "$VENV/bin/activate"
+python -m pip install -U pip wheel setuptools
 
-python train_sft.py
+REQ=/data/requirements.txt
+META="$OUT_ROOT/env/.req.sha256"
+if [ -f "$REQ" ]; then
+  CUR=$(sha256sum "$REQ" | awk '{print $1}')
+  if [ ! -f "$META" ] || [ "$(cat "$META")" != "$CUR" ]; then
+    log "Instalando requirements (hash mudou)"
+    pip install -r "$REQ"
+    echo -n "$CUR" > "$META"
+  else
+    log "Requirements sem mudancas - pulando pip install"
+  fi
+else
+  log "requirements.txt nao encontrado - seguindo sem instalar deps"
+fi
+
+python - <<'PY' || true
+def ver(m):
+    try:
+        mod = __import__(m)
+        print(f"{m}={getattr(mod,'__version__','n/a')}")
+    except Exception:
+        print(f"{m}=MISSING")
+for m in ("torch","transformers","trl","peft","datasets","accelerate"):
+    ver(m)
+PY
+
+log "Treino iniciado"
+log "CFG=$CFG"
+log "OUT_ROOT=$OUT_ROOT | HF_HOME=$HF_HOME | WANDB_DIR=$WANDB_DIR | OFFLOAD_DIR=$OFFLOAD_DIR"
+exec python -u train_sft.py
