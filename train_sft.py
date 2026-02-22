@@ -15,8 +15,12 @@ cfg = load_config()
 
 #modelo, dados e saída
 model_id = cfg["model"]["id"]
-data_path = cfg["data"]["train_path"]
+data_path = "data/train_processed.jsonl"
 output_dir = cfg["output"]["dir"]
+
+print(f"  - Modelo: {model_id}")
+print(f"  - Dataset: {data_path}")
+print(f"  - Output: {output_dir}")
 
 #configs quantização   
 bnb_config = BitsAndBytesConfig(
@@ -29,6 +33,7 @@ bnb_config = BitsAndBytesConfig(
 #tokenizer e modelo
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
 tokenizer.pad_token = tokenizer.eos_token
+tokenizer.padding_side = "right"
 
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
@@ -37,8 +42,22 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 model.config.use_cache = False
 
-#leitura do dataset
+print(f"\n Carregando dataset: {data_path}")
 dataset = load_dataset("json", data_files=data_path, split="train")
+print(f"Dataset carregado: {len(dataset)} exemplos")
+
+#formatando os dados para o modelo
+def formatting_func(example):
+ 
+    if tokenizer.chat_template is None:
+        text = f"User: {example['messages'][0]['content']}\n\nAssistant: {example['messages'][1]['content']}"
+    else:
+        text = tokenizer.apply_chat_template(
+            example['messages'],
+            tokenize=False, #retornar token (true) ou string (false)
+            add_generation_prompt=False
+        )
+    return text
 
 #configs lora
 peft_config = LoraConfig(
@@ -63,7 +82,10 @@ training_args = TrainingArguments(
     save_steps=cfg["training"]["save_steps"],
     save_total_limit=cfg["training"]["save_total_limit"],
     report_to=cfg["training"]["report_to"],
+    optim="adamw_torch",
 )
+
+print("\n Iniciando treinamento")
 
 #treinamento
 trainer = SFTTrainer(
@@ -72,6 +94,10 @@ trainer = SFTTrainer(
     train_dataset=dataset,
     args=training_args,
     peft_config=peft_config,
+    formatting_func=formatting_func,
 )
 trainer.train()
+
+print(f"\nSalvando modelo em {output_dir}...")
 trainer.save_model(output_dir)
+print("Treinamento finalizado")

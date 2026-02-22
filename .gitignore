@@ -3,3 +3,4 @@ jobs/
 .env
 out/
 outputs/
+data/

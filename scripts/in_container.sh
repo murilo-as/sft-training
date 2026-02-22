@@ -20,8 +20,7 @@ export PIP_CACHE_DIR="$OUT_ROOT/cache/pip"
 mkdir -p "$HF_HOME" "$TRITON_CACHE_DIR" "$OFFLOAD_DIR" "$WANDB_DIR" "$PIP_CACHE_DIR"
 
 export PYTHONPATH="/data:${PYTHONPATH:-}"
-export WANDB_MODE=offline
-unset WANDB_API_KEY
+export WANDB_MODE=online
 [ -z "${WANDB_BASE_URL:-}" ] && unset WANDB_BASE_URL
 
 if [ -n "${SSL_CERT_FILE:-}" ] && [ ! -f "$SSL_CERT_FILE" ]; then
@@ -75,6 +74,22 @@ def ver(m):
 for m in ("torch","transformers","trl","peft","datasets","accelerate"):
     ver(m)
 PY
+
+# Preprocessamento dos dados
+TRAIN_JSON="data/train.json"
+TRAIN_PROCESSED="data/train_processed.jsonl"
+
+if [ -f "$TRAIN_JSON" ]; then
+  # Verifica se precisa reprocessar (se o processed não existe ou se o JSON é mais novo)
+  if [ ! -f "$TRAIN_PROCESSED" ] || [ "$TRAIN_JSON" -nt "$TRAIN_PROCESSED" ]; then
+    log "Executando preprocessamento dos dados..."
+    python -u preprocess.py || die "Falha no preprocessamento"
+  else
+    log "Dados já preprocessados - pulando etapa de preprocessamento"
+  fi
+else
+  log "AVISO: $TRAIN_JSON não encontrado - tentando usar dados já processados"
+fi
 
 log "Treino iniciado"
 log "CFG=$CFG"
