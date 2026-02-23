@@ -36,7 +36,6 @@ if [ -n "${REQUESTS_CA_BUNDLE:-}" ] && [ ! -f "$REQUESTS_CA_BUNDLE" ]; then
   unset REQUESTS_CA_BUNDLE
 fi
 
-# Fallback para bundle de CA do sistema, se existir
 if [ -z "${SSL_CERT_FILE:-}" ] && [ -f /etc/ssl/certs/ca-certificates.crt ]; then
   export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 fi
@@ -75,12 +74,10 @@ for m in ("torch","transformers","trl","peft","datasets","accelerate"):
     ver(m)
 PY
 
-# Preprocessamento dos dados
 TRAIN_JSON="data/train.json"
 TRAIN_PROCESSED="data/train_processed.jsonl"
 
 if [ -f "$TRAIN_JSON" ]; then
-  # Verifica se precisa reprocessar (se o processed não existe ou se o JSON é mais novo)
   if [ ! -f "$TRAIN_PROCESSED" ] || [ "$TRAIN_JSON" -nt "$TRAIN_PROCESSED" ]; then
     log "Executando preprocessamento dos dados..."
     python -u preprocess.py || die "Falha no preprocessamento"
