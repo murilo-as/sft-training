@@ -74,20 +74,6 @@ for m in ("torch","transformers","trl","peft","datasets","accelerate"):
     ver(m)
 PY
 
-TRAIN_JSON="data/train.json"
-TRAIN_PROCESSED="data/train_processed.jsonl"
-
-if [ -f "$TRAIN_JSON" ]; then
-  if [ ! -f "$TRAIN_PROCESSED" ] || [ "$TRAIN_JSON" -nt "$TRAIN_PROCESSED" ]; then
-    log "Executando preprocessamento dos dados..."
-    python -u preprocess.py || die "Falha no preprocessamento"
-  else
-    log "Dados já preprocessados - pulando etapa de preprocessamento"
-  fi
-else
-  log "AVISO: $TRAIN_JSON não encontrado - tentando usar dados já processados"
-fi
-
 log "Treino iniciado"
 log "CFG=$CFG"
 log "OUT_ROOT=$OUT_ROOT | HF_HOME=$HF_HOME | WANDB_DIR=$WANDB_DIR | OFFLOAD_DIR=$OFFLOAD_DIR"

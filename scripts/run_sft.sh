@@ -23,7 +23,6 @@ cd "$PROJECT_DIR"
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
 CONFIG_FILE="${CONFIG_FILE:-config/config.yaml}"
 [ -f "$CONFIG_FILE" ] || die "config nao encontrada: $CONFIG_FILE"
-[ -f "data/train.json" ] || die "data/train.json nao encontrado"
 
 OUT_DIR_HOST="$PROJECT_DIR/out"
 mkdir -p "$OUT_DIR_HOST" jobs
@@ -40,7 +39,7 @@ mkdir -p "$HF_HOME" "$XDG_CACHE_HOME" "$PIP_CACHE_DIR"
 
 log "Projeto: $PROJECT_DIR"
 log "Config: $CONFIG_FILE"
-log "Dataset: data/train.json (ok - sera preprocessado automaticamente)"
+log "Dataset: sera carregado conforme definido em config.yaml"
 log "OUT: $OUT_DIR_HOST"
 log "Imagem (Apptainer): $APPT_IMAGE"
 log "Subindo container com Apptainer..."

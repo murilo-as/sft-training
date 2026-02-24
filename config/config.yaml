@@ -1,7 +1,9 @@
 model:
   id: "Qwen/Qwen3-30B-A3B-Instruct-2507"
+  device_map: "auto" #dispositivo para carregar o modelo
 data:
-  train_path: "data/train.json"
+  train_path: "data/perguntas_train.jsonl"
+  processed_path: "data/train_processed.jsonl"
 output:
   dir: "outputs/qwen3-30b-sft"
 
@@ -24,6 +26,7 @@ training:
   gradient_accumulation_steps: 4 #numero de passos até atualizar os pesos
   num_train_epochs: 4 #numero de épocas
   learning_rate: 0.0002 #taxa de aprendizado
+  optimizer: "adamw_torch" #otimizador
   fp16: false
   bf16: true
   logging_steps: 1 

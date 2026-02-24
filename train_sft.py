@@ -15,7 +15,7 @@ cfg = load_config()
 
 #modelo, dados e saída
 model_id = cfg["model"]["id"]
-data_path = "data/train_processed.jsonl"
+data_path = cfg["data"]["train_path"]
 output_dir = cfg["output"]["dir"]
 
 print(f"  - Modelo: {model_id}")
@@ -38,7 +38,7 @@ tokenizer.padding_side = "right"
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     quantization_config=bnb_config,
-    device_map="auto",
+    device_map=cfg["model"]["device_map"],
 )
 model.config.use_cache = False
 
@@ -46,9 +46,19 @@ print(f"\n Carregando dataset: {data_path}")
 dataset = load_dataset("json", data_files=data_path, split="train")
 print(f"Dataset carregado: {len(dataset)} exemplos")
 
+#convertendo para formato de mensagens
+def convert_to_messages(example):
+    return {
+        "messages": [
+            {"role": "user", "content": example["prompt"]},
+            {"role": "assistant", "content": example["completion"]}
+        ]
+    }
+
+dataset = dataset.map(convert_to_messages, remove_columns=dataset.column_names)
+
 #formatando os dados para o modelo
 def formatting_func(example):
- 
     if tokenizer.chat_template is None:
         text = f"User: {example['messages'][0]['content']}\n\nAssistant: {example['messages'][1]['content']}"
     else:
@@ -82,7 +92,7 @@ training_args = TrainingArguments(
     save_steps=cfg["training"]["save_steps"],
     save_total_limit=cfg["training"]["save_total_limit"],
     report_to=cfg["training"]["report_to"],
-    optim="adamw_torch",
+    optim=cfg["training"]["optimizer"],
 )
 
 print("\n Iniciando treinamento")
@@ -98,6 +108,6 @@ trainer = SFTTrainer(
 )
 trainer.train()
 
-print(f"\nSalvando modelo em {output_dir}...")
+print(f"\nSalvando modelo em {output_dir}")
 trainer.save_model(output_dir)
 print("Treinamento finalizado")
